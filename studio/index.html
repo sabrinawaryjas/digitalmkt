@@ -1,0 +1,735 @@
+<title>Viral Lab Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Sora:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sala de controle — radar de vídeos à esquerda, laboratório de agentes no centro, board de ideias à direita */
+:root{
+  color-scheme: dark;
+  --bg:#080b16; --bg2:#0d1222; --panel:#111830; --panel2:#16203d; --line:#24305a; --line2:#2f3d6e;
+  --fg:#e6ebff; --muted:#8a94bd; --dim:#5d6894;
+  --signal:#46e0ff; --hot:#ff4f8b; --amber:#ffc65c; --ok:#53f2a8; --violet:#9d7bff;
+  --f-display:"Unbounded","Sora",system-ui,sans-serif;
+  --f-body:"Sora",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:14px;line-height:1.5;min-height:100vh;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px;
+  background-image:radial-gradient(1200px 500px at 15% -10%,rgba(70,224,255,.10),transparent 60%),radial-gradient(900px 500px at 100% 0%,rgba(255,79,139,.08),transparent 60%);
+  background-attachment:fixed}
+#grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
+.wrap{position:relative;z-index:1;max-width:1560px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.mono{font-family:var(--f-mono)}
+.tab{font-variant-numeric:tabular-nums}
+
+/* header */
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:18px 28px;padding:22px 0 18px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{width:42px;height:42px;border-radius:12px;position:relative;flex:none;
+  background:conic-gradient(from 200deg,var(--signal),var(--violet),var(--hot),var(--signal));padding:2px}
+.logo span{display:grid;place-items:center;width:100%;height:100%;border-radius:10px;background:var(--bg);font-family:var(--f-display);font-size:15px}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:clamp(18px,2.2vw,24px);letter-spacing:-.01em;margin:0;line-height:1.1}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin-left:auto}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:112px}
+.stat b{display:block;font-family:var(--f-mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.live{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:var(--hot)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--hot);box-shadow:0 0 0 0 rgba(255,79,139,.6);animation:pulse 1.6s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 10px rgba(255,79,139,0)}100%{box-shadow:0 0 0 0 rgba(255,79,139,0)}}
+
+/* layout */
+.studio{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr) minmax(260px,320px);gap:18px;padding-top:18px;align-items:start}
+@media (max-width:1180px){.studio{grid-template-columns:minmax(260px,320px) minmax(0,1fr)}.col-board{grid-column:1/-1}}
+@media (max-width:760px){.studio{grid-template-columns:minmax(0,1fr)}}
+.col{min-width:0;display:flex;flex-direction:column;gap:14px}
+.col-feed{position:sticky;top:12px}
+@media (max-width:760px){.col-feed{position:static}}
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sec-h h2{font-family:var(--f-display);font-weight:500;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0}
+.sec-h .hint{color:var(--dim);font-size:11px;font-family:var(--f-mono)}
+.panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:14px;padding:14px}
+
+/* feed */
+.feed-tools{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line2);background:transparent;border-radius:999px;padding:4px 10px;font-size:11.5px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.feed{display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 290px);min-height:360px;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+@media (max-width:760px){.feed{max-height:520px}}
+.vid{display:grid;grid-template-columns:62px minmax(0,1fr);gap:11px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:left;width:100%;transition:border-color .2s,transform .2s}
+.vid:hover{border-color:var(--line2);transform:translateX(2px)}
+.vid[aria-pressed="true"]{border-color:var(--signal);box-shadow:inset 0 0 0 1px var(--signal)}
+.vid.new{animation:drop .7s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes drop{from{opacity:.2;transform:translateY(-14px) scale(.97);border-color:var(--hot)}to{opacity:1;transform:none}}
+.thumb{aspect-ratio:9/16;max-width:100%;border-radius:8px;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:5px}
+.thumb canvas{position:absolute;inset:0;width:100%;height:100%}
+.thumb .dur{position:relative;font-family:var(--f-mono);font-size:9.5px;background:rgba(0,0,0,.6);padding:1px 4px;border-radius:4px;color:#fff}
+.vmeta{min-width:0;display:flex;flex-direction:column;gap:5px}
+.vtop{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);font-family:var(--f-mono)}
+.plat{font-weight:600;letter-spacing:.06em;padding:1px 6px;border-radius:4px;font-size:9.5px}
+.plat.tt{background:rgba(70,224,255,.14);color:var(--signal)}
+.plat.ig{background:rgba(255,79,139,.14);color:var(--hot)}
+.plat.you{background:rgba(255,198,92,.16);color:var(--amber)}
+.vtop .ago{margin-left:auto}
+.hook{font-size:13px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}
+.vnums{display:flex;gap:10px;font-family:var(--f-mono);font-size:11px;color:var(--muted);flex-wrap:wrap}
+.vnums b{color:var(--fg);font-weight:600}
+.vel{color:var(--ok)}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.add-form{display:flex;flex-direction:column;gap:8px}
+.add-form summary{cursor:pointer;color:var(--signal);font-size:12.5px;font-weight:500;list-style:none}
+.add-form summary::-webkit-details-marker{display:none}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:var(--muted)}
+input,textarea,select{background:var(--bg);border:1px solid var(--line2);color:var(--fg);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:58px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* buttons */
+.btn{border:1px solid var(--line2);background:var(--panel2);border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--signal)}
+.btn.primary{background:linear-gradient(90deg,var(--signal),#7fb6ff);color:#05101c;border-color:transparent;font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.hot{background:linear-gradient(90deg,var(--hot),#ff8a6b);color:#1a0610;border-color:transparent;font-weight:600}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:5px 10px;font-size:11.5px}
+
+/* radar */
+.radar-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.radar-grid{grid-template-columns:minmax(0,1fr)}}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:128px minmax(0,1fr) 44px;align-items:center;gap:10px;font-size:12px}
+.bar span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg)}
+.track{height:8px;border-radius:99px;background:var(--panel2);overflow:hidden}
+.fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--violet),var(--signal));transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.bar .pct{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.spark-box{display:flex;flex-direction:column;gap:6px;min-width:0}
+.spark-box canvas{width:100%;height:150px;display:block}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+/* agents */
+.agents{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.agent{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;position:relative;overflow:hidden}
+.agent::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:var(--ac);opacity:.9}
+.agent.running::after{content:"";position:absolute;inset:0 0 auto -40%;width:40%;height:2px;background:linear-gradient(90deg,transparent,#fff,transparent);animation:scan 1.2s linear infinite}
+@keyframes scan{to{left:100%}}
+.agent-h{display:flex;align-items:center;gap:10px}
+.agent-h>div:nth-child(2){flex:1;min-width:0}
+.avatar{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--ac) 16%,transparent);border:1px solid color-mix(in srgb,var(--ac) 45%,transparent);flex:none}
+.avatar svg{width:20px;height:20px;stroke:var(--ac);fill:none;stroke-width:1.8}
+.agent-h h3{margin:0;font-size:13.5px;font-weight:600}
+.agent-h p{margin:0;font-size:11px;color:var(--muted)}
+.status{flex:none;font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;padding:2px 7px;border-radius:99px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.status.run{color:var(--amber);border-color:var(--amber)}
+.status.done{color:var(--ok);border-color:var(--ok)}
+.status.err{color:var(--hot);border-color:var(--hot)}
+.console{font-family:var(--f-mono);font-size:11px;line-height:1.55;background:#050812;border:1px solid var(--line);border-radius:9px;padding:9px 10px;height:132px;overflow:auto;color:#9fb0e6;white-space:pre-wrap;overflow-wrap:anywhere}
+.console .k{color:var(--ac)}
+.console .w{color:var(--fg)}
+.agent-out{display:flex;flex-direction:column;gap:7px}
+.pat{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--bg2)}
+.pat-h{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:600}
+.pat-h .mono{color:var(--signal);font-size:11px}
+.pat p{margin:3px 0 0;font-size:11.5px;color:var(--muted)}
+.mode-note{font-size:11px;color:var(--dim);font-family:var(--f-mono)}
+
+.pipeline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pipe-steps{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px;color:var(--muted);flex-wrap:wrap}
+.pipe-steps b{color:var(--fg);font-weight:600}
+.pipe-steps .arrow{color:var(--dim)}
+
+/* ideas */
+.ideas{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.idea{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:9px;min-width:0;animation:rise .5s ease both}
+@keyframes rise{from{transform:translateY(8px);opacity:.3}to{transform:none;opacity:1}}
+.idea-top{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.score{margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--ok)}
+.score .ring{width:22px;height:22px}
+.idea h4{margin:0;font-family:var(--f-display);font-weight:500;font-size:15px;line-height:1.3;text-wrap:balance}
+.idea .gancho{font-size:13px;background:rgba(70,224,255,.07);border-left:2px solid var(--signal);padding:6px 9px;border-radius:0 7px 7px 0}
+.idea ol{margin:0;padding-left:18px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.idea .dif{font-size:12px}
+.idea .dif b{color:var(--hot);font-weight:600}
+.idea-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.cap{border-top:1px dashed var(--line2);padding-top:9px;display:flex;flex-direction:column;gap:8px}
+.cap-label{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;color:var(--violet);text-transform:uppercase}
+.cap-text{font-size:12.5px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;position:relative}
+.hash-groups{display:flex;flex-direction:column;gap:5px}
+.hash-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.hash-row em{font-style:normal;font-size:10px;color:var(--dim);font-family:var(--f-mono);width:78px}
+.ht{font-family:var(--f-mono);font-size:11px;padding:2px 7px;border-radius:5px;background:rgba(157,123,255,.12);color:#c6b5ff}
+.ht.reach{background:rgba(70,224,255,.1);color:var(--signal)}
+.ht.comm{background:rgba(83,242,168,.1);color:var(--ok)}
+.empty{border:1px dashed var(--line2);border-radius:14px;padding:22px;text-align:center;color:var(--muted);font-size:13px}
+.empty b{color:var(--fg)}
+
+/* board */
+.board{display:flex;flex-direction:column;gap:10px}
+.pin{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
+.pin-h{display:flex;gap:8px;align-items:flex-start}
+.pin-h b{font-size:13px;font-weight:600;line-height:1.35;flex:1;min-width:0}
+.pin select{width:auto;font-size:11px;padding:3px 6px}
+.pin .x{background:none;border:none;color:var(--dim);font-size:16px;line-height:1;padding:0 2px}
+.pin .x:hover{color:var(--hot)}
+.pin p{margin:0;font-size:11.5px;color:var(--muted)}
+.lanes{display:flex;gap:6px;font-family:var(--f-mono);font-size:10.5px;color:var(--muted);flex-wrap:wrap}
+.lanes span b{color:var(--fg)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:12.5px;font-weight:500;opacity:0;transition:.25s;z-index:20;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<canvas id="grid-bg" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo"><span>VL</span></div>
+      <div>
+        <h1>Viral Lab Studio</h1>
+        <p>Edição com Claude para quem não sabe editar · radar EUA → ideias BR</p>
+      </div>
+    </div>
+    <span class="live"><i></i>RADAR AO VIVO</span>
+    <div class="stats">
+      <div class="stat"><b id="st-videos" class="tab">0</b><small>vídeos no radar</small></div>
+      <div class="stat"><b id="st-views" class="tab">0</b><small>views somadas</small></div>
+      <div class="stat"><b id="st-top" class="tab">—</b><small>padrão em alta</small></div>
+      <div class="stat"><b id="st-ideas" class="tab">0</b><small>ideias geradas</small></div>
+    </div>
+  </header>
+
+  <main class="studio">
+    <!-- FEED -->
+    <section class="col col-feed" aria-labelledby="h-feed">
+      <div class="sec-h"><h2 id="h-feed">Radar de virais</h2><span class="hint" id="next-in">próximo em 8s</span></div>
+      <div class="feed-tools" role="group" aria-label="Filtrar plataforma">
+        <button class="chip" data-f="all" aria-pressed="true">Todos</button>
+        <button class="chip" data-f="tt" aria-pressed="false">TikTok</button>
+        <button class="chip" data-f="ig" aria-pressed="false">Instagram</button>
+        <button class="chip" id="pause" aria-pressed="false">Pausar entrada</button>
+      </div>
+      <div class="feed" id="feed" aria-live="polite"></div>
+      <div class="panel">
+        <details class="add-form">
+          <summary>+ Jogar um vídeo real no radar</summary>
+          <form id="add" class="add-form" style="margin-top:8px">
+            <div class="field"><label for="a-link">Link (TikTok / Instagram)</label><input id="a-link" placeholder="https://www.tiktok.com/@.../video/..." autocomplete="off"></div>
+            <div class="field"><label for="a-hook">Gancho / o que acontece no vídeo</label><textarea id="a-hook" required placeholder="Ex: ela mostra o vídeo cru e depois a versão editada só com 1 prompt"></textarea></div>
+            <div class="row2">
+              <div class="field"><label for="a-views">Views</label><input id="a-views" inputmode="numeric" placeholder="1200000"></div>
+              <div class="field"><label for="a-plat">Plataforma</label><select id="a-plat"><option value="tt">TikTok</option><option value="ig">Instagram</option></select></div>
+            </div>
+            <button class="btn primary" type="submit">Adicionar ao radar</button>
+          </form>
+        </details>
+      </div>
+      <p class="mode-note">Os sinais automáticos são exemplos de formatos que circulam nos EUA (não são posts reais). Vídeos que você adicionar entram como fonte real.</p>
+    </section>
+
+    <!-- LAB -->
+    <section class="col" aria-labelledby="h-lab">
+      <div class="panel">
+        <div class="sec-h" style="margin-bottom:12px"><h2 id="h-lab">Mapa de padrões · ao vivo</h2><span class="hint">peso = velocidade de views</span></div>
+        <div class="radar-grid">
+          <div class="bars" id="bars"></div>
+          <div class="spark-box">
+            <canvas id="spark" aria-label="Velocidade de views dos últimos vídeos"></canvas>
+            <div class="legend"><span><i style="background:var(--signal)"></i>TikTok</span><span><i style="background:var(--hot)"></i>Instagram</span><span>views/hora · últimos 24 sinais</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel pipeline">
+        <button class="btn hot" id="run-all">▶ Rodar pipeline de agentes</button>
+        <div class="pipe-steps"><b>Mapeador</b><span class="arrow">→</span><b>Ressignificador</b><span class="arrow">→</span><b>Legendas &amp; Hashtags</b></div>
+        <span class="mode-note" id="mode" style="margin-left:auto">conectando ao Claude…</span>
+      </div>
+
+      <div class="agents">
+        <article class="agent" id="ag-map" style="--ac:var(--signal)">
+          <div class="agent-h">
+            <div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v4M21 12h-4"/></svg></div>
+            <div><h3>Mapeador de Virais</h3><p>acha os padrões que se repetem</p></div>
+            <span class="status" data-s>PRONTO</span>
+          </div>
+          <div class="console" data-c></div>
+          <div class="agent-out" data-o></div>
+          <button class="btn sm" data-run="map">Mapear últimos vídeos</button>
+        </article>
+        <article class="agent" id="ag-remix" style="--ac:var(--violet)">
+          <div class="agent-h">
+            <div class="avatar"><svg viewBox="0 0 24 24"><path d="M4 7h11l-3-3M20 17H9l3 3"/><path d="M15 7a5 5 0 0 1 5 5M9 17a5 5 0 0 1-5-5"/></svg></div>
+            <div><h3>Ressignificador</h3><p>vira o padrão em ideia nova, do seu jeito</p></div>
+            <span class="status" data-s>PRONTO</span>
+          </div>
+          <div class="console" data-c></div>
+          <div class="agent-out" data-o></div>
+          <button class="btn sm" data-run="remix">Gerar ideias</button>
+        </article>
+        <article class="agent" id="ag-cap" style="--ac:var(--hot)">
+          <div class="agent-h">
+            <div class="avatar"><svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></div>
+            <div><h3>Legendas &amp; Hashtags</h3><p>legenda que engaja + tags que trazem seguidor</p></div>
+            <span class="status" data-s>PRONTO</span>
+          </div>
+          <div class="console" data-c></div>
+          <div class="agent-out" data-o></div>
+          <button class="btn sm" data-run="cap">Escrever para a melhor ideia</button>
+        </article>
+      </div>
+
+      <div class="sec-h"><h2>Ideias ressignificadas</h2><span class="hint" id="ideas-hint">selecione vídeos no radar para focar</span></div>
+      <div class="ideas" id="ideas">
+        <div class="empty" style="grid-column:1/-1"><b>Nenhuma ideia ainda.</b><br>Rode o pipeline: o Mapeador lê os últimos vídeos do radar, o Ressignificador cria 4 ideias novas e o agente de Legendas escreve a legenda e as hashtags.</div>
+      </div>
+    </section>
+
+    <!-- BOARD -->
+    <aside class="col col-board" aria-labelledby="h-board">
+      <div class="sec-h"><h2 id="h-board">Board de pauta</h2><span class="hint" id="board-count">0 ideias</span></div>
+      <div class="lanes" id="lanes"></div>
+      <div class="board" id="board"><div class="empty">Salve ideias aqui para montar sua pauta da semana. Elas ficam guardadas neste navegador.</div></div>
+    </aside>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => n>=1e6 ? (n/1e6).toFixed(n>=1e7?0:1).replace(".",",")+"M" : n>=1e3 ? Math.round(n/1e3)+"k" : String(Math.round(n));
+const rnd = (a,b) => a + Math.random()*(b-a);
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+};
+const toast = msg => { const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),2200); };
+
+/* ---------- Pattern vocabulary ---------- */
+const PATTERNS = {
+  "Antes/Depois":     "Mostra o resultado nos 2 primeiros segundos; o cérebro quer ver a transformação.",
+  "Prompt copiável":  "Entrega algo pra salvar. Saves sinalizam valor e o algoritmo empurra.",
+  "POV":              "Coloca o espectador dentro da cena e gera identificação imediata.",
+  "Comparação":       "Duas opções lado a lado provocam opinião e comentários.",
+  "Série / Dia N":    "Cria hábito de voltar; cada episódio puxa o anterior.",
+  "Tela gravada":     "Prova que é real: o passo a passo visível derruba a desconfiança.",
+  "Lista rápida":     "Promessa de número fechado (3 dicas) segura até o fim.",
+  "Pessoa leiga":     "Se fulano que não entende de nada conseguiu, eu também consigo.",
+  "CTA de comentário":"‘Comenta PROMPT que eu te mando’ explode comentários e DMs.",
+  "Dados/Retenção":   "Gráfico e número dão autoridade e curiosidade técnica.",
+  "Tempo recorde":    "‘Em 10 segundos’ vende economia de tempo, a dor nº 1 de quem não edita."
+};
+
+/* ---------- Example signal library (formats seen in US creator content; not real posts) ---------- */
+const LIB = [
+  {p:"tt",h:"I edited this entire video with ONE Claude prompt",d:34,v:2.4e6,t:["Antes/Depois","Prompt copiável"]},
+  {p:"tt",h:"Stop paying editors: Claude turns your transcript into a cut list",d:41,v:1.1e6,t:["Tela gravada","Tempo recorde"]},
+  {p:"ig",h:"3 Claude prompts every lazy creator needs (save this)",d:9,v:860e3,t:["Lista rápida","Prompt copiável"]},
+  {p:"tt",h:"POV: you asked Claude to find the 3 best hooks in your 40-min podcast",d:27,v:3.2e6,t:["POV","Tempo recorde"]},
+  {p:"ig",h:"Claude wrote my B-roll shot list in 10 seconds",d:22,v:540e3,t:["Tempo recorde","Tela gravada"]},
+  {p:"tt",h:"Rating Claude's edit vs. my $500 editor's edit",d:58,v:1.9e6,t:["Comparação","Antes/Depois"]},
+  {p:"tt",h:"My mom edited her first Reel using Claude. Zero experience.",d:46,v:4.1e6,t:["Pessoa leiga","Antes/Depois"]},
+  {p:"ig",h:"Comment CUT and I'll send you my Claude editing prompt",d:18,v:720e3,t:["CTA de comentário","Prompt copiável"]},
+  {p:"tt",h:"Day 1 vs Day 30 of editing with Claude",d:31,v:1.3e6,t:["Série / Dia N","Antes/Depois"]},
+  {p:"tt",h:"Claude found the exact second my video loses viewers",d:39,v:980e3,t:["Dados/Retenção","Tela gravada"]},
+  {p:"ig",h:"Turn 1 long video into 10 shorts with this Claude workflow",d:52,v:1.5e6,t:["Tela gravada","Lista rápida"]},
+  {p:"tt",h:"Remove every silence from your video with Claude + one command",d:44,v:690e3,t:["Tela gravada","Tempo recorde"]},
+  {p:"tt",h:"I gave Claude my worst video. Here's the re-edit.",d:49,v:2.7e6,t:["Antes/Depois","Comparação"]},
+  {p:"ig",h:"Things Claude does for editors that nobody talks about",d:36,v:610e3,t:["Lista rápida","POV"]},
+  {p:"tt",h:"Claude vs ChatGPT: who writes better jump cuts?",d:55,v:1.2e6,t:["Comparação","Dados/Retenção"]},
+  {p:"ig",h:"Script → storyboard → edit plan. Claude did all 3 in 1 minute.",d:29,v:880e3,t:["Tempo recorde","Tela gravada"]},
+  {p:"tt",h:"POV: your client wants it 'more viral' so you ask Claude",d:19,v:2.2e6,t:["POV","Pessoa leiga"]},
+  {p:"ig",h:"Claude as my color grading coach (I just send a screenshot)",d:33,v:470e3,t:["Tela gravada","Antes/Depois"]},
+  {p:"tt",h:"YouTube chapters in 5 seconds with Claude. Copy my prompt.",d:21,v:760e3,t:["Prompt copiável","Tempo recorde"]},
+  {p:"tt",h:"My grandpa used Claude to edit our family trip video",d:62,v:5.3e6,t:["Pessoa leiga","Antes/Depois"]},
+  {p:"ig",h:"Claude picked my thumbnail. CTR went from 3% to 9%.",d:26,v:930e3,t:["Dados/Retenção","Comparação"]},
+  {p:"tt",h:"Day 7 letting Claude plan every edit for me",d:24,v:640e3,t:["Série / Dia N","Tela gravada"]},
+  {p:"ig",h:"Wedding video cut in 15 min using Claude's edit list",d:47,v:1.0e6,t:["Tempo recorde","Antes/Depois"]},
+  {p:"tt",h:"Comment HOOK and I'll DM you the prompt that rewrote mine",d:16,v:1.6e6,t:["CTA de comentário","Antes/Depois"]}
+];
+
+let feed = [];            // {id,p,h,d,v,vel,likes,saves,t,at,real,link}
+let libIdx = 0, uid = 0, paused = false, filter = "all";
+let selected = new Set();
+let lastPatterns = null, ideas = [];
+let board = store.get("vl-board", []);
+
+function makeSignal(base, real=false){
+  const jitter = real ? 1 : rnd(.75,1.35);
+  const v = Math.round(base.v * jitter);
+  const hours = real ? 48 : rnd(6,72);
+  return { id: ++uid, p: base.p, h: base.h, d: base.d || 30, v, vel: v / hours,
+    likes: v * rnd(.06,.14), saves: v * rnd(.01,.05), t: base.t.slice(), at: Date.now(), real, link: base.link || "", seed: Math.random() };
+}
+function pushSignal(sig, animate=true){
+  feed.unshift(sig); if (feed.length > 60) feed.pop();
+  renderFeed(animate ? sig.id : null); renderRadar(); renderStats();
+}
+function nextFromLib(){ const b = LIB[libIdx % LIB.length]; libIdx++; return makeSignal(b); }
+
+/* ---------- Thumbnails: generative canvas per video ---------- */
+function paintThumb(cv, sig){
+  const r = cv.getBoundingClientRect(); const dpr = Math.min(2, devicePixelRatio||1);
+  cv.width = Math.max(1, r.width*dpr); cv.height = Math.max(1, r.height*dpr);
+  const c = cv.getContext("2d"); const W=cv.width, H=cv.height; let s = sig.seed*9999;
+  const R = () => (s = (s*16807) % 2147483647) / 2147483647;
+  const a = sig.p==="tt" ? ["#0b2a3a","#46e0ff"] : ["#3a0b22","#ff4f8b"];
+  const g = c.createLinearGradient(0,0,W,H); g.addColorStop(0,a[0]); g.addColorStop(1,"#120f2b"); c.fillStyle=g; c.fillRect(0,0,W,H);
+  c.globalAlpha=.55;
+  for(let i=0;i<5;i++){ c.fillStyle = i%2? a[1] : "#9d7bff"; c.beginPath(); c.arc(R()*W, R()*H, (R()*.4+.1)*W, 0, 7); c.fill(); }
+  c.globalAlpha=1; c.fillStyle="rgba(5,8,18,.45)"; c.fillRect(0,0,W,H);
+  // timeline strip
+  c.fillStyle="rgba(255,255,255,.85)"; const y=H*.62;
+  for(let i=0;i<7;i++){ const w=W*(.08+R()*.1); c.fillRect(W*.1 + i*W*.12, y, w*.8, H*.035); }
+  c.fillStyle=a[1]; c.fillRect(W*.1+R()*W*.7, y-H*.05, 2*dpr, H*.13);
+}
+
+/* ---------- Feed render ---------- */
+function ago(t){ const s = Math.round((Date.now()-t)/1000); return s<60 ? `há ${s}s` : `há ${Math.round(s/60)}min`; }
+function renderFeed(newId){
+  const el = $("#feed");
+  const list = feed.filter(f => filter==="all" || f.p===filter);
+  el.innerHTML = list.map(f => `
+    <button class="vid${f.id===newId?" new":""}" data-id="${f.id}" aria-pressed="${selected.has(f.id)}">
+      <div class="thumb"><canvas></canvas><span class="dur">0:${String(f.d).padStart(2,"0")}</span></div>
+      <div class="vmeta">
+        <div class="vtop"><span class="plat ${f.p}">${f.p==="tt"?"TIKTOK":"INSTAGRAM"}</span>${f.real?'<span class="plat you">REAL</span>':'<span>EUA</span>'}<span class="ago" data-at="${f.at}">${ago(f.at)}</span></div>
+        <div class="hook">${esc(f.h)}</div>
+        <div class="vnums tab"><span><b>${fmt(f.v)}</b> views</span><span>${fmt(f.saves)} saves</span><span class="vel">▲ ${fmt(f.vel)}/h</span></div>
+        <div class="tags">${f.t.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
+      </div>
+    </button>`).join("");
+  $$(".vid", el).forEach(b => { const f = feed.find(x=>x.id==b.dataset.id); requestAnimationFrame(()=>paintThumb($("canvas",b), f)); });
+  const n = selected.size;
+  $("#ideas-hint").textContent = n ? `${n} vídeo${n>1?"s":""} em foco` : "selecione vídeos no radar para focar";
+}
+$("#feed").addEventListener("click", e => {
+  const b = e.target.closest(".vid"); if(!b) return; const id = +b.dataset.id;
+  selected.has(id) ? selected.delete(id) : selected.add(id);
+  b.setAttribute("aria-pressed", selected.has(id));
+  const n = selected.size; $("#ideas-hint").textContent = n ? `${n} vídeo${n>1?"s":""} em foco` : "selecione vídeos no radar para focar";
+});
+$$(".feed-tools .chip[data-f]").forEach(c => c.onclick = () => {
+  filter = c.dataset.f; $$(".feed-tools .chip[data-f]").forEach(x=>x.setAttribute("aria-pressed", x===c)); renderFeed();
+});
+$("#pause").onclick = e => { paused = !paused; e.currentTarget.setAttribute("aria-pressed", paused); e.currentTarget.textContent = paused ? "Retomar entrada" : "Pausar entrada"; };
+$("#add").addEventListener("submit", e => {
+  e.preventDefault();
+  const h = $("#a-hook").value.trim(); if(!h) return;
+  const link = $("#a-link").value.trim(); const p = $("#a-plat").value;
+  const v = parseInt($("#a-views").value.replace(/\D/g,""),10) || 100000;
+  const t = guessTags(h);
+  pushSignal(makeSignal({p,h,v,t,link,d:30}, true));
+  e.target.reset(); toast("Vídeo adicionado ao radar");
+});
+function guessTags(h){
+  const s = h.toLowerCase(), t = [];
+  if(/antes|depois|before|after|cru|raw/.test(s)) t.push("Antes/Depois");
+  if(/prompt/.test(s)) t.push("Prompt copiável");
+  if(/pov/.test(s)) t.push("POV");
+  if(/ vs |versus|compar/.test(s)) t.push("Comparação");
+  if(/dia \d|day \d/.test(s)) t.push("Série / Dia N");
+  if(/coment|comment/.test(s)) t.push("CTA de comentário");
+  if(/m[ãa]e|pai|av[óo]|mom|grand|leig|nunca/.test(s)) t.push("Pessoa leiga");
+  if(/segundo|minuto|second|min\b|r[áa]pido/.test(s)) t.push("Tempo recorde");
+  if(/\d+ (dicas|prompts|tips)/.test(s)) t.push("Lista rápida");
+  if(!t.length) t.push("Tela gravada");
+  return t.slice(0,3);
+}
+
+/* ---------- Radar ---------- */
+function patternScores(src=feed){
+  const sc = {}; let tot = 0;
+  src.forEach(f => f.t.forEach(t => { sc[t] = (sc[t]||0) + f.vel; tot += f.vel; }));
+  return Object.entries(sc).map(([k,v])=>({k, v, pct: tot? v/tot : 0})).sort((a,b)=>b.v-a.v);
+}
+function renderRadar(){
+  const sc = patternScores().slice(0,7); const max = sc[0]?.v || 1;
+  $("#bars").innerHTML = sc.map(s => `<div class="bar"><span title="${esc(PATTERNS[s.k]||"")}">${esc(s.k)}</span><div class="track"><div class="fill" style="width:${(s.v/max*100).toFixed(1)}%"></div></div><span class="pct">${Math.round(s.pct*100)}%</span></div>`).join("");
+  drawSpark();
+}
+function drawSpark(){
+  const cv = $("#spark"); const r = cv.getBoundingClientRect(); if(!r.width) return;
+  const dpr = Math.min(2, devicePixelRatio||1); cv.width=r.width*dpr; cv.height=r.height*dpr;
+  const c = cv.getContext("2d"); c.scale(dpr,dpr); const W=r.width, H=r.height, pad={l:34,r:6,t:8,b:16};
+  const css = getComputedStyle(document.documentElement);
+  const pts = feed.slice(0,24).reverse(); if(!pts.length) return;
+  const max = Math.max(...pts.map(p=>p.vel)) * 1.1;
+  c.strokeStyle = css.getPropertyValue("--line"); c.fillStyle = css.getPropertyValue("--dim"); c.font = "10px JetBrains Mono, monospace"; c.lineWidth=1;
+  for(let i=0;i<=3;i++){ const y = pad.t + (H-pad.t-pad.b)*(i/3); c.beginPath(); c.moveTo(pad.l,y); c.lineTo(W-pad.r,y); c.stroke(); c.fillText(fmt(max*(1-i/3)), 0, y+3); }
+  const bw = (W-pad.l-pad.r)/24;
+  pts.forEach((p,i) => {
+    const h = (p.vel/max)*(H-pad.t-pad.b); const x = pad.l + i*bw + bw*.18; const y = H-pad.b-h;
+    c.fillStyle = css.getPropertyValue(p.p==="tt"?"--signal":"--hot"); c.globalAlpha = i===pts.length-1 ? 1 : .7;
+    c.beginPath(); c.roundRect ? c.roundRect(x,y,bw*.64,h,[3,3,0,0]) : c.rect(x,y,bw*.64,h); c.fill();
+  });
+  c.globalAlpha=1;
+}
+function renderStats(){
+  $("#st-videos").textContent = feed.length;
+  $("#st-views").textContent = fmt(feed.reduce((a,f)=>a+f.v,0));
+  $("#st-top").textContent = patternScores()[0]?.k || "—";
+  $("#st-ideas").textContent = ideas.length;
+}
+
+/* ---------- Claude connection ---------- */
+let sample = null;
+const modeEl = $("#mode");
+(async () => {
+  try { sample = window.claude?.use ? await window.claude.use("sample") : null; } catch { sample = null; }
+  modeEl.textContent = sample ? "agentes rodando no Claude ●" : "modo offline: agentes com heurística local";
+  modeEl.style.color = sample ? "var(--ok)" : "var(--amber)";
+})();
+setTimeout(()=>{ if(modeEl.textContent.startsWith("conectando")) { modeEl.textContent="modo offline: agentes com heurística local"; modeEl.style.color="var(--amber)"; } }, 11000);
+
+const BRIEF = `Contexto: sou criadora de conteúdo brasileira. Nicho: dicas de edição de vídeo usando o Claude (IA da Anthropic) para facilitar a vida de quem NÃO sabe editar. Publico Reels e TikToks em português. Quero pegar o que viralizou nos EUA e ressignificar, não copiar.`;
+function videosForPrompt(){
+  const src = selected.size ? feed.filter(f=>selected.has(f.id)) : feed.slice(0,14);
+  return src.map(f=>`#${f.id} [${f.p==="tt"?"TikTok":"Instagram"}] "${f.h}" · ${fmt(f.v)} views · ${fmt(f.vel)}/h · ${f.d}s · tags: ${f.t.join(", ")}`).join("\n");
+}
+function parseJSON(text){
+  const a = text.indexOf("{"), b = text.lastIndexOf("}");
+  if(a<0||b<=a) throw new Error("sem JSON");
+  return JSON.parse(text.slice(a,b+1));
+}
+const ERR = {not_granted:"Você não liberou o Claude nesta página. Usei a heurística local.", rate_limited:"Muitas chamadas seguidas. Espere um minuto.", cancelled:"Cancelado."};
+
+function agentUI(id){ const r=$("#"+id); return {r, s:$("[data-s]",r), c:$("[data-c]",r), o:$("[data-o]",r), b:$("[data-run]",r)}; }
+function setStatus(ui, st){ const m={run:["RODANDO","run"],done:["CONCLUÍDO","done"],err:["ERRO","err"],idle:["PRONTO",""]}[st]; ui.s.textContent=m[0]; ui.s.className="status "+m[1]; ui.r.classList.toggle("running", st==="run"); ui.b.disabled = st==="run"; }
+function log(ui, line, cls="w"){ ui.c.insertAdjacentHTML("beforeend", `<span class="${cls}">${esc(line)}</span>\n`); ui.c.scrollTop = ui.c.scrollHeight; }
+async function typeLog(ui, lines){ for(const [l,c] of lines){ log(ui,l,c); await new Promise(r=>setTimeout(r, matchMedia("(prefers-reduced-motion:reduce)").matches?0:220)); } }
+
+async function askAgent(ui, prompt, fallback){
+  if(!sample){ await typeLog(ui, [["> modo local: heurística de padrões","k"]]); return fallback(); }
+  log(ui, "> enviando para o Claude…", "k");
+  const start = ui.c.innerHTML; let first = true;
+  try{
+    const {text} = await sample(prompt, { modelTier:"default", onText: ({text}) => {
+      if(first){ first=false; }
+      ui.c.innerHTML = start + `<span>${esc(text.slice(-900))}</span>`; ui.c.scrollTop = ui.c.scrollHeight;
+    }});
+    return parseJSON(text);
+  }catch(e){
+    log(ui, "! " + (ERR[e.code] || "Resposta não veio no formato esperado. Usei a heurística local."), "k");
+    if(e.code==="not_granted") sample = null;
+    return fallback();
+  }
+}
+
+/* ---------- Agent 1: pattern mapper ---------- */
+async function runMap(){
+  const ui = agentUI("ag-map"); setStatus(ui,"run"); ui.c.innerHTML=""; ui.o.innerHTML="";
+  const vids = videosForPrompt();
+  await typeLog(ui, [[`> lendo ${vids.split("\n").length} vídeos do radar`,"k"],["> cruzando gancho × formato × velocidade","w"]]);
+  const prompt = `${BRIEF}
+
+Você é o AGENTE MAPEADOR DE VIRAIS. Analise estes vídeos virais recentes dos EUA sobre edição com Claude:
+${vids}
+
+Encontre os 4 padrões mais fortes que explicam por que viralizaram (gancho, estrutura, emoção, formato, CTA). Seja específico e prático.
+Responda SOMENTE com JSON válido, em português:
+{"padroes":[{"nome":"nome curto","por_que_funciona":"1 frase","como_aparece":"1 frase com exemplo dos vídeos","forca":0-100}],"insight":"1 frase sobre a oportunidade para o Brasil"}`;
+  const out = await askAgent(ui, prompt, localMap);
+  lastPatterns = out;
+  ui.o.innerHTML = (out.padroes||[]).map(p=>`<div class="pat"><div class="pat-h"><span>${esc(p.nome)}</span><span class="mono">${esc(p.forca)}</span></div><p>${esc(p.por_que_funciona)}</p></div>`).join("") + (out.insight?`<p class="mode-note" style="color:var(--signal)">${esc(out.insight)}</p>`:"");
+  log(ui, `✓ ${out.padroes?.length||0} padrões mapeados`, "k"); setStatus(ui,"done");
+  return out;
+}
+function localMap(){
+  const src = selected.size ? feed.filter(f=>selected.has(f.id)) : feed.slice(0,14);
+  const sc = patternScores(src).slice(0,4); const max = sc[0]?.v||1;
+  return { padroes: sc.map(s=>({nome:s.k, por_que_funciona:PATTERNS[s.k], como_aparece:(src.find(f=>f.t.includes(s.k))||{}).h||"", forca: Math.round(55 + 45*s.v/max)})),
+    insight: "No Brasil quase ninguém mostra edição com Claude pra leigo em português. A janela está aberta." };
+}
+
+/* ---------- Agent 2: remixer ---------- */
+async function runRemix(){
+  const ui = agentUI("ag-remix"); setStatus(ui,"run"); ui.c.innerHTML="";
+  if(!lastPatterns){ log(ui,"> sem mapa ainda, chamando o Mapeador","k"); await runMap(); }
+  await typeLog(ui, [["> recebendo padrões do Mapeador","k"],["> procurando o ângulo brasileiro","w"]]);
+  const prompt = `${BRIEF}
+
+Você é o AGENTE RESSIGNIFICADOR. Padrões virais encontrados:
+${JSON.stringify(lastPatterns.padroes)}
+
+Vídeos de referência:
+${videosForPrompt()}
+
+Crie 4 ideias de vídeo NOVAS para Reels/TikTok em português. Cada ideia deve usar um padrão que funcionou, mas mudar o ângulo (personagem, situação brasileira do dia a dia, formato ou promessa) para não ser cópia. O público não sabe editar: a ideia precisa parecer fácil de reproduzir.
+Responda SOMENTE com JSON válido:
+{"ideias":[{"titulo":"curto","gancho":"primeira frase falada/na tela, até 12 palavras","formato":"ex: tela gravada + rosto","roteiro":["3 a 5 passos curtos"],"diferencial":"o que muda em relação ao viral gringo","padrao_origem":"nome do padrão","potencial":0-100}]}`;
+  const out = await askAgent(ui, prompt, localRemix);
+  const fresh = (out.ideias||[]).map(i=>({...i, id: "i"+Date.now()+Math.random().toString(36).slice(2,6)}));
+  ideas = [...fresh, ...ideas].slice(0,24);
+  ui.o.innerHTML = `<p class="mode-note" style="color:var(--violet)">${fresh.length} ideias novas no painel abaixo ↓</p>`;
+  log(ui, `✓ ${fresh.length} ideias ressignificadas`, "k"); setStatus(ui,"done");
+  renderIdeas(); renderStats();
+  return fresh;
+}
+const REMIX_T = {
+  "Antes/Depois": () => ({titulo:"Vídeo do churrasco: cru × editado", gancho:"Esse vídeo do churrasco tava horrível. Olha depois do Claude.", formato:"split-screen + tela gravada", roteiro:["Mostrar 3s do vídeo cru tremido","Colar a transcrição no Claude e pedir lista de cortes","Aplicar os cortes no CapCut em 1 minuto","Revelar a versão final com música"], diferencial:"Troca o vídeo de criador por um momento de família brasileiro, que todo mundo tem no celular."}),
+  "Prompt copiável": () => ({titulo:"O prompt que edita por você", gancho:"Salva esse prompt antes que você esqueça.", formato:"texto na tela + voz", roteiro:["Mostrar o prompt inteiro na tela por 3s","Explicar cada parte em 1 frase","Mostrar o resultado no CapCut","Pedir pra salvar"], diferencial:"Prompt em português, testado com apps que o brasileiro usa (CapCut, InShot)."}),
+  "POV": () => ({titulo:"POV: seu chefe pediu um vídeo pra ontem", gancho:"POV: seu chefe pediu o vídeo da empresa pra hoje.", formato:"POV encenado + tela gravada", roteiro:["Cena do chefe mandando áudio no WhatsApp","Desespero de 2s","Abrir o Claude e montar o roteiro de edição","Entregar e o chefe responder 'ficou top'"], diferencial:"Situação de trabalho CLT brasileira em vez de creator gringo."}),
+  "Comparação": () => ({titulo:"Editei sozinha × editei com Claude", gancho:"Mesmo vídeo, duas edições. Qual ficou melhor?", formato:"lado a lado + enquete nos comentários", roteiro:["Mostrar edição feita sem ajuda","Mostrar edição guiada pelo Claude","Mostrar o tempo gasto em cada uma","Pedir voto nos comentários"], diferencial:"A comparação é com você mesma, não com um editor caro: aproxima do público leigo."}),
+  "Série / Dia N": () => ({titulo:"30 dias aprendendo a editar com Claude", gancho:"Dia 1: eu não sei nem cortar um vídeo.", formato:"série diária, mesmo enquadramento", roteiro:["Apresentar o desafio do dia","Mostrar a dúvida que mandou pro Claude","Aplicar a resposta","Mostrar a evolução vs dia anterior"], diferencial:"Você assume o papel de leiga aprendendo em público, o que gera torcida."}),
+  "Tela gravada": () => ({titulo:"Legenda automática que não erra", gancho:"Sua legenda automática erra tudo? Faz assim.", formato:"tela gravada com zoom", roteiro:["Mostrar legenda errada do app","Colar no Claude pra corrigir e quebrar em linhas curtas","Colar de volta no CapCut","Mostrar o antes e depois"], diferencial:"Foco em português com gíria e sotaque, onde o automático mais erra."}),
+  "Lista rápida": () => ({titulo:"3 coisas que o Claude faz por quem não edita", gancho:"3 coisas que o Claude faz e ninguém te conta.", formato:"rosto + texto na tela", roteiro:["Dica 1: lista de cortes","Dica 2: legenda revisada","Dica 3: ideia de gancho","CTA: segue pra parte 2"], diferencial:"Cada dica mostra o resultado em 3s, sem jargão de editor."}),
+  "Pessoa leiga": () => ({titulo:"Minha vó editou um Reel com o Claude", gancho:"Minha vó de 74 anos editou esse Reel sozinha.", formato:"vlog + reação", roteiro:["Vó tentando sozinha e travando","Você mostra o Claude no celular dela","Ela segue os passos em voz alta","Reação dela vendo o resultado"], diferencial:"Personagem brasileiro carismático; o humor da família faz o vídeo ser compartilhado."}),
+  "CTA de comentário": () => ({titulo:"Comenta EDITA que eu te mando", gancho:"Comenta EDITA que eu te mando esse prompt no direct.", formato:"resultado rápido + CTA", roteiro:["Mostrar o resultado final primeiro","Mostrar o prompt borrado","Pedir o comentário com a palavra","Responder no direct com o prompt"], diferencial:"Palavra-chave em português e entrega via direct pra aumentar conversa e seguidores."}),
+  "Dados/Retenção": () => ({titulo:"Onde as pessoas param de ver seu vídeo", gancho:"Seu vídeo perde metade das pessoas aqui. O Claude achou.", formato:"print de métricas + tela gravada", roteiro:["Mostrar o gráfico de retenção","Mandar o print e a transcrição pro Claude","Mostrar o corte sugerido","Comparar a retenção depois"], diferencial:"Traduz métrica técnica pra linguagem simples de quem posta no Instagram."}),
+  "Tempo recorde": () => ({titulo:"Editei em 2 minutos no ônibus", gancho:"Editei esse vídeo inteiro dentro do ônibus.", formato:"selfie em movimento + tela", roteiro:["Mostrar que está no ônibus","Pedir ao Claude o plano de edição","Executar no celular","Postar antes de descer"], diferencial:"Edição no celular, em situação real de rotina brasileira, sem computador."})
+};
+function localRemix(){
+  const names = (lastPatterns?.padroes||[]).map(p=>p.nome);
+  const pool = [...new Set([...names, ...Object.keys(REMIX_T)])].filter(n=>REMIX_T[n]);
+  const pick = pool.sort(()=>Math.random()-.4).slice(0,4);
+  return { ideias: pick.map(n=>({...REMIX_T[n](), padrao_origem:n, potencial: Math.round(rnd(68,94))})) };
+}
+
+/* ---------- Agent 3: captions & hashtags ---------- */
+async function runCap(idea){
+  const ui = agentUI("ag-cap"); setStatus(ui,"run"); ui.c.innerHTML="";
+  if(!idea){ if(!ideas.length){ log(ui,"> sem ideias ainda, chamando o Ressignificador","k"); await runRemix(); } idea = [...ideas].sort((a,b)=>(b.potencial||0)-(a.potencial||0))[0]; }
+  if(!idea){ setStatus(ui,"err"); return; }
+  await typeLog(ui, [[`> ideia: ${idea.titulo}`,"k"],["> montando legenda, gancho de tela e hashtags","w"]]);
+  const prompt = `${BRIEF}
+
+Você é o AGENTE EXPERT EM LEGENDAS VIRAIS E HASHTAGS para Instagram e TikTok. Sabe o que faz o público comentar, salvar e seguir.
+Ideia do vídeo: ${JSON.stringify({titulo:idea.titulo,gancho:idea.gancho,formato:idea.formato,roteiro:idea.roteiro})}
+
+Escreva:
+- 2 legendas em português (uma curta e provocativa, uma que entrega valor e pede save), com quebra de linha e CTA que gera comentário ou follow. Máximo 2 emojis por legenda.
+- 3 textos curtos para a tela nos primeiros 2 segundos.
+- Hashtags em 3 grupos: alcance (3, amplas), nicho (5, edição/IA/Claude, misture PT e EN), comunidade (3, pequenas, que trazem seguidores fiéis). Sem #fyp genérico demais.
+Responda SOMENTE com JSON válido:
+{"legendas":[{"estilo":"curta","texto":"..."},{"estilo":"valor","texto":"..."}],"texto_tela":["..."],"hashtags":{"alcance":["#..."],"nicho":["#..."],"comunidade":["#..."]},"dica":"1 dica de quando/como postar"}`;
+  const out = await askAgent(ui, prompt, () => localCap(idea));
+  idea.cap = out;
+  ui.o.innerHTML = `<p class="mode-note" style="color:var(--hot)">Legenda pronta na ideia “${esc(idea.titulo)}”</p>`;
+  log(ui, "✓ legendas e hashtags prontas", "k"); setStatus(ui,"done");
+  renderIdeas(); const card = $(`.idea[data-id="${idea.id}"]`); card?.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function localCap(idea){
+  const g = idea.gancho || idea.titulo;
+  return {
+    legendas:[
+      {estilo:"curta", texto:`${g}\n\nVocê não precisa saber editar. Precisa saber pedir. ✂️\n\nComenta EDITA que eu te mando o passo a passo.`},
+      {estilo:"valor", texto:`Salva pra testar hoje:\n\n${(idea.roteiro||[]).map((s,i)=>`${i+1}. ${s}`).join("\n")}\n\nSe ajudou, me segue: toda semana tem uma dica nova de edição com Claude. 💡`}
+    ],
+    texto_tela:[g, "Sem saber editar nada", "Só com o Claude"],
+    hashtags:{alcance:["#reels","#dicasdeedicao","#inteligenciaartificial"], nicho:["#claudeai","#edicaodevideo","#capcut","#aiediting","#videoediting"], comunidade:["#criadoresbr","#editecomia","#reelsparainiciantes"]},
+    dica:"Poste entre 18h e 21h e responda os primeiros comentários em até 30 minutos."
+  };
+}
+
+/* ---------- Ideas render ---------- */
+function ring(p){ const r=9, C=2*Math.PI*r, d=C*(p/100); return `<svg class="ring" viewBox="0 0 22 22"><circle cx="11" cy="11" r="${r}" fill="none" stroke="var(--line2)" stroke-width="2.5"/><circle cx="11" cy="11" r="${r}" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-dasharray="${d} ${C}" transform="rotate(-90 11 11)" stroke-linecap="round"/></svg>`; }
+function capHTML(c){
+  if(!c) return "";
+  const H = c.hashtags||{};
+  return `<div class="cap">
+    <span class="cap-label">Texto na tela</span>
+    <div class="tags">${(c.texto_tela||[]).map(t=>`<span class="tag" style="color:var(--fg)">${esc(t)}</span>`).join("")}</div>
+    ${(c.legendas||[]).map(l=>`<span class="cap-label">Legenda · ${esc(l.estilo)}</span><div class="cap-text">${esc(l.texto)}</div><button class="btn sm" data-copy="${esc(l.texto)}">Copiar legenda</button>`).join("")}
+    <span class="cap-label">Hashtags</span>
+    <div class="hash-groups">
+      <div class="hash-row"><em>alcance</em>${(H.alcance||[]).map(h=>`<span class="ht reach">${esc(h)}</span>`).join("")}</div>
+      <div class="hash-row"><em>nicho</em>${(H.nicho||[]).map(h=>`<span class="ht">${esc(h)}</span>`).join("")}</div>
+      <div class="hash-row"><em>comunidade</em>${(H.comunidade||[]).map(h=>`<span class="ht comm">${esc(h)}</span>`).join("")}</div>
+    </div>
+    <button class="btn sm" data-copy="${esc([...(H.alcance||[]),...(H.nicho||[]),...(H.comunidade||[])].join(" "))}">Copiar hashtags</button>
+    ${c.dica?`<p class="mode-note">${esc(c.dica)}</p>`:""}
+  </div>`;
+}
+function renderIdeas(){
+  const el = $("#ideas"); if(!ideas.length) return;
+  el.innerHTML = ideas.map(i=>`
+    <article class="idea" data-id="${i.id}">
+      <div class="idea-top"><span class="tag">${esc(i.padrao_origem||"padrão")}</span><span>${esc(i.formato||"")}</span><span class="score">${ring(+i.potencial||70)}${esc(i.potencial||"")}</span></div>
+      <h4>${esc(i.titulo)}</h4>
+      <div class="gancho">“${esc(i.gancho)}”</div>
+      <ol>${(i.roteiro||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
+      <div class="dif"><b>Diferente do gringo:</b> ${esc(i.diferencial)}</div>
+      ${capHTML(i.cap)}
+      <div class="idea-actions">
+        ${i.cap?"":`<button class="btn sm" data-act="cap">Legenda + hashtags</button>`}
+        <button class="btn sm" data-act="save">${board.some(b=>b.id===i.id)?"Salva ✓":"Salvar no board"}</button>
+      </div>
+    </article>`).join("");
+}
+$("#ideas").addEventListener("click", async e => {
+  const cp = e.target.closest("[data-copy]");
+  if(cp){ const txt = cp.dataset.copy; try{ await navigator.clipboard.writeText(txt); toast("Copiado"); }catch{ const t=cp.previousElementSibling; if(t){ const r=document.createRange(); r.selectNodeContents(t); getSelection().removeAllRanges(); getSelection().addRange(r);} toast("Texto selecionado: use Ctrl+C"); } return; }
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  const idea = ideas.find(i=>i.id===b.closest(".idea").dataset.id); if(!idea) return;
+  if(b.dataset.act==="cap"){ b.disabled=true; await runCap(idea); }
+  if(b.dataset.act==="save"){ if(!board.some(x=>x.id===idea.id)){ board.unshift({...idea, lane:"ideia"}); store.set("vl-board", board); renderBoard(); toast("Salvo no board"); } b.textContent="Salva ✓"; }
+});
+
+/* ---------- Board ---------- */
+const LANES = {ideia:"Ideia", gravar:"Gravar", editar:"Editar", postado:"Postado"};
+function renderBoard(){
+  $("#board-count").textContent = `${board.length} ideia${board.length===1?"":"s"}`;
+  $("#lanes").innerHTML = Object.entries(LANES).map(([k,v])=>`<span>${v} <b class="tab">${board.filter(b=>b.lane===k).length}</b></span>`).join("<span>·</span>");
+  if(!board.length){ $("#board").innerHTML = `<div class="empty">Salve ideias aqui para montar sua pauta da semana. Elas ficam guardadas neste navegador.</div>`; return; }
+  $("#board").innerHTML = board.map((b,ix)=>`
+    <div class="pin" data-ix="${ix}">
+      <div class="pin-h"><b>${esc(b.titulo)}</b>
+        <select aria-label="Etapa" data-lane>${Object.entries(LANES).map(([k,v])=>`<option value="${k}"${b.lane===k?" selected":""}>${v}</option>`).join("")}</select>
+        <button class="x" aria-label="Remover" data-del>×</button></div>
+      <p>“${esc(b.gancho)}”</p>
+      ${b.cap?`<p style="color:var(--violet)">${esc([...(b.cap.hashtags?.nicho||[])].slice(0,4).join(" "))}</p>`:""}
+    </div>`).join("");
+}
+$("#board").addEventListener("change", e => { if(e.target.matches("[data-lane]")){ board[+e.target.closest(".pin").dataset.ix].lane = e.target.value; store.set("vl-board",board); renderBoard(); } });
+$("#board").addEventListener("click", e => { if(e.target.matches("[data-del]")){ board.splice(+e.target.closest(".pin").dataset.ix,1); store.set("vl-board",board); renderBoard(); renderIdeas(); } });
+
+/* ---------- Buttons ---------- */
+$("[data-run=map]").onclick = () => runMap();
+$("[data-run=remix]").onclick = () => runRemix();
+$("[data-run=cap]").onclick = () => runCap();
+$("#run-all").onclick = async e => {
+  const b = e.currentTarget; b.disabled = true; b.textContent = "Rodando…";
+  try{ await runMap(); await runRemix(); await runCap(); toast("Pipeline concluído"); }
+  finally{ b.disabled=false; b.textContent="▶ Rodar pipeline de agentes"; }
+};
+
+/* ---------- Live arrival loop ---------- */
+const INTERVAL = 8;
+let countdown = INTERVAL;
+for(let i=0;i<9;i++) feed.unshift(nextFromLib());
+feed.forEach((f,i)=> f.at = Date.now() - (feed.length-i)*rnd(40e3,180e3));
+renderFeed(); renderRadar(); renderStats(); renderBoard();
+setInterval(()=>{
+  $$(".ago").forEach(a=>a.textContent = ago(+a.dataset.at));
+  if(paused){ $("#next-in").textContent = "entrada pausada"; return; }
+  countdown--; if(countdown<=0){ countdown = INTERVAL + Math.round(rnd(-2,3)); pushSignal(nextFromLib()); }
+  $("#next-in").textContent = `próximo em ${countdown}s`;
+},1000);
+addEventListener("resize", () => { drawSpark(); bg.resize(); });
+
+/* ---------- Ambient background grid ---------- */
+const bg = (() => {
+  const cv = $("#grid-bg"), c = cv.getContext("2d"); let W,H,t=0, dots=[];
+  function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; dots = Array.from({length:Math.round(W*H/38000)},()=>({x:Math.random()*W,y:Math.random()*H,v:rnd(.15,.5)})); }
+  function frame(){
+    c.clearRect(0,0,W,H); c.strokeStyle="rgba(70,110,200,.07)"; c.lineWidth=1;
+    for(let x=0;x<W;x+=48){ c.beginPath(); c.moveTo(x,0); c.lineTo(x,H); c.stroke(); }
+    for(let y=(t*.3)%48;y<H;y+=48){ c.beginPath(); c.moveTo(0,y); c.lineTo(W,y); c.stroke(); }
+    dots.forEach(d=>{ d.y -= d.v; if(d.y<0) d.y=H; c.fillStyle="rgba(70,224,255,.35)"; c.fillRect(d.x,d.y,1.5,1.5); });
+    t++; if(!matchMedia("(prefers-reduced-motion:reduce)").matches) requestAnimationFrame(frame);
+  }
+  resize(); frame(); return {resize};
+})();
+})();
+</script>
