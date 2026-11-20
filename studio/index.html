@@ -193,7 +193,7 @@ textarea{resize:vertical;min-height:58px}
       <div class="logo"><span>VL</span></div>
       <div>
         <h1>Viral Lab Studio</h1>
-        <p>Edição com Claude para quem não sabe editar · radar EUA → ideias BR</p>
+        <p>Edição com Claude para quem não sabe editar · radar EUA → posts novos em inglês</p>
       </div>
     </div>
     <span class="live"><i></i>RADAR AO VIVO</span>
@@ -492,7 +492,7 @@ const modeEl = $("#mode");
 })();
 setTimeout(()=>{ if(modeEl.textContent.startsWith("conectando")) { modeEl.textContent="modo offline: agentes com heurística local"; modeEl.style.color="var(--amber)"; } }, 11000);
 
-const BRIEF = `Contexto: sou criadora de conteúdo brasileira. Nicho: dicas de edição de vídeo usando o Claude (IA da Anthropic) para facilitar a vida de quem NÃO sabe editar. Publico Reels e TikToks em português. Quero pegar o que viralizou nos EUA e ressignificar, não copiar.`;
+const BRIEF = `Contexto: sou criadora de conteúdo. Nicho: dicas de edição de vídeo usando o Claude (IA da Anthropic) para facilitar a vida de quem NÃO sabe editar. Publico Reels e TikToks EM INGLÊS para o público dos EUA. Quero pegar o que viralizou nos EUA e ressignificar, não copiar. Me explique as análises em português, mas todo texto que vai ao ar (título, gancho, roteiro, legendas, texto de tela, hashtags) deve estar em inglês americano natural.`;
 function videosForPrompt(){
   const src = selected.size ? feed.filter(f=>selected.has(f.id)) : feed.slice(0,14);
   return src.map(f=>`#${f.id} [${f.p==="tt"?"TikTok":"Instagram"}] "${f.h}" · ${fmt(f.v)} views · ${fmt(f.vel)}/h · ${f.d}s · tags: ${f.t.join(", ")}`).join("\n");
@@ -538,7 +538,7 @@ ${vids}
 
 Encontre os 4 padrões mais fortes que explicam por que viralizaram (gancho, estrutura, emoção, formato, CTA). Seja específico e prático.
 Responda SOMENTE com JSON válido, em português:
-{"padroes":[{"nome":"nome curto","por_que_funciona":"1 frase","como_aparece":"1 frase com exemplo dos vídeos","forca":0-100}],"insight":"1 frase sobre a oportunidade para o Brasil"}`;
+{"padroes":[{"nome":"nome curto","por_que_funciona":"1 frase","como_aparece":"1 frase com exemplo dos vídeos","forca":0-100}],"insight":"1 frase sobre o espaço que ainda ninguém ocupou nesse nicho"}`;
   const out = await askAgent(ui, prompt, localMap);
   lastPatterns = out;
   ui.o.innerHTML = (out.padroes||[]).map(p=>`<div class="pat"><div class="pat-h"><span>${esc(p.nome)}</span><span class="mono">${esc(p.forca)}</span></div><p>${esc(p.por_que_funciona)}</p></div>`).join("") + (out.insight?`<p class="mode-note" style="color:var(--signal)">${esc(out.insight)}</p>`:"");
@@ -549,7 +549,7 @@ function localMap(){
   const src = selected.size ? feed.filter(f=>selected.has(f.id)) : feed.slice(0,14);
   const sc = patternScores(src).slice(0,4); const max = sc[0]?.v||1;
   return { padroes: sc.map(s=>({nome:s.k, por_que_funciona:PATTERNS[s.k], como_aparece:(src.find(f=>f.t.includes(s.k))||{}).h||"", forca: Math.round(55 + 45*s.v/max)})),
-    insight: "No Brasil quase ninguém mostra edição com Claude pra leigo em português. A janela está aberta." };
+    insight: "Quase todo mundo mostra Claude para creators avançados. Quase ninguém fala com o iniciante total: esse é o espaço livre." };
 }
 
 /* ---------- Agent 2: remixer ---------- */
@@ -565,9 +565,10 @@ ${JSON.stringify(lastPatterns.padroes)}
 Vídeos de referência:
 ${videosForPrompt()}
 
-Crie 4 ideias de vídeo NOVAS para Reels/TikTok em português. Cada ideia deve usar um padrão que funcionou, mas mudar o ângulo (personagem, situação brasileira do dia a dia, formato ou promessa) para não ser cópia. O público não sabe editar: a ideia precisa parecer fácil de reproduzir.
+Crie 4 ideias de vídeo NOVAS para Reels/TikTok em inglês, para o público dos EUA. Cada ideia deve usar um padrão que funcionou, mas mudar o ângulo (personagem, situação do dia a dia, formato ou promessa) para não ser cópia nem soar igual aos virais que já existem. O público não sabe editar: a ideia precisa parecer fácil de reproduzir.
+Idioma: titulo, gancho, formato e roteiro em inglês; diferencial em português.
 Responda SOMENTE com JSON válido:
-{"ideias":[{"titulo":"curto","gancho":"primeira frase falada/na tela, até 12 palavras","formato":"ex: tela gravada + rosto","roteiro":["3 a 5 passos curtos"],"diferencial":"o que muda em relação ao viral gringo","padrao_origem":"nome do padrão","potencial":0-100}]}`;
+{"ideias":[{"titulo":"curto","gancho":"primeira frase falada/na tela, até 12 palavras","formato":"ex: tela gravada + rosto","roteiro":["3 a 5 passos curtos"],"diferencial":"o que muda em relação ao viral original","padrao_origem":"nome do padrão","potencial":0-100}]}`;
   const out = await askAgent(ui, prompt, localRemix);
   const fresh = (out.ideias||[]).map(i=>({...i, id: "i"+Date.now()+Math.random().toString(36).slice(2,6)}));
   ideas = [...fresh, ...ideas].slice(0,24);
@@ -577,17 +578,17 @@ Responda SOMENTE com JSON válido:
   return fresh;
 }
 const REMIX_T = {
-  "Antes/Depois": () => ({titulo:"Vídeo do churrasco: cru × editado", gancho:"Esse vídeo do churrasco tava horrível. Olha depois do Claude.", formato:"split-screen + tela gravada", roteiro:["Mostrar 3s do vídeo cru tremido","Colar a transcrição no Claude e pedir lista de cortes","Aplicar os cortes no CapCut em 1 minuto","Revelar a versão final com música"], diferencial:"Troca o vídeo de criador por um momento de família brasileiro, que todo mundo tem no celular."}),
-  "Prompt copiável": () => ({titulo:"O prompt que edita por você", gancho:"Salva esse prompt antes que você esqueça.", formato:"texto na tela + voz", roteiro:["Mostrar o prompt inteiro na tela por 3s","Explicar cada parte em 1 frase","Mostrar o resultado no CapCut","Pedir pra salvar"], diferencial:"Prompt em português, testado com apps que o brasileiro usa (CapCut, InShot)."}),
-  "POV": () => ({titulo:"POV: seu chefe pediu um vídeo pra ontem", gancho:"POV: seu chefe pediu o vídeo da empresa pra hoje.", formato:"POV encenado + tela gravada", roteiro:["Cena do chefe mandando áudio no WhatsApp","Desespero de 2s","Abrir o Claude e montar o roteiro de edição","Entregar e o chefe responder 'ficou top'"], diferencial:"Situação de trabalho CLT brasileira em vez de creator gringo."}),
-  "Comparação": () => ({titulo:"Editei sozinha × editei com Claude", gancho:"Mesmo vídeo, duas edições. Qual ficou melhor?", formato:"lado a lado + enquete nos comentários", roteiro:["Mostrar edição feita sem ajuda","Mostrar edição guiada pelo Claude","Mostrar o tempo gasto em cada uma","Pedir voto nos comentários"], diferencial:"A comparação é com você mesma, não com um editor caro: aproxima do público leigo."}),
-  "Série / Dia N": () => ({titulo:"30 dias aprendendo a editar com Claude", gancho:"Dia 1: eu não sei nem cortar um vídeo.", formato:"série diária, mesmo enquadramento", roteiro:["Apresentar o desafio do dia","Mostrar a dúvida que mandou pro Claude","Aplicar a resposta","Mostrar a evolução vs dia anterior"], diferencial:"Você assume o papel de leiga aprendendo em público, o que gera torcida."}),
-  "Tela gravada": () => ({titulo:"Legenda automática que não erra", gancho:"Sua legenda automática erra tudo? Faz assim.", formato:"tela gravada com zoom", roteiro:["Mostrar legenda errada do app","Colar no Claude pra corrigir e quebrar em linhas curtas","Colar de volta no CapCut","Mostrar o antes e depois"], diferencial:"Foco em português com gíria e sotaque, onde o automático mais erra."}),
-  "Lista rápida": () => ({titulo:"3 coisas que o Claude faz por quem não edita", gancho:"3 coisas que o Claude faz e ninguém te conta.", formato:"rosto + texto na tela", roteiro:["Dica 1: lista de cortes","Dica 2: legenda revisada","Dica 3: ideia de gancho","CTA: segue pra parte 2"], diferencial:"Cada dica mostra o resultado em 3s, sem jargão de editor."}),
-  "Pessoa leiga": () => ({titulo:"Minha vó editou um Reel com o Claude", gancho:"Minha vó de 74 anos editou esse Reel sozinha.", formato:"vlog + reação", roteiro:["Vó tentando sozinha e travando","Você mostra o Claude no celular dela","Ela segue os passos em voz alta","Reação dela vendo o resultado"], diferencial:"Personagem brasileiro carismático; o humor da família faz o vídeo ser compartilhado."}),
-  "CTA de comentário": () => ({titulo:"Comenta EDITA que eu te mando", gancho:"Comenta EDITA que eu te mando esse prompt no direct.", formato:"resultado rápido + CTA", roteiro:["Mostrar o resultado final primeiro","Mostrar o prompt borrado","Pedir o comentário com a palavra","Responder no direct com o prompt"], diferencial:"Palavra-chave em português e entrega via direct pra aumentar conversa e seguidores."}),
-  "Dados/Retenção": () => ({titulo:"Onde as pessoas param de ver seu vídeo", gancho:"Seu vídeo perde metade das pessoas aqui. O Claude achou.", formato:"print de métricas + tela gravada", roteiro:["Mostrar o gráfico de retenção","Mandar o print e a transcrição pro Claude","Mostrar o corte sugerido","Comparar a retenção depois"], diferencial:"Traduz métrica técnica pra linguagem simples de quem posta no Instagram."}),
-  "Tempo recorde": () => ({titulo:"Editei em 2 minutos no ônibus", gancho:"Editei esse vídeo inteiro dentro do ônibus.", formato:"selfie em movimento + tela", roteiro:["Mostrar que está no ônibus","Pedir ao Claude o plano de edição","Executar no celular","Postar antes de descer"], diferencial:"Edição no celular, em situação real de rotina brasileira, sem computador."})
+  "Antes/Depois": () => ({titulo:"Backyard BBQ video: raw vs. edited", gancho:"This BBQ video was unwatchable. Here it is after Claude.", formato:"split-screen + screen recording", roteiro:["Show 3s of the shaky raw clip","Paste the transcript into Claude and ask for a cut list","Apply the cuts in CapCut in 1 minute","Reveal the final version with music"], diferencial:"Troca o vídeo de creator por um vídeo de família comum, que todo mundo tem parado no celular."}),
+  "Prompt copiável": () => ({titulo:"The prompt that edits for you", gancho:"Save this prompt before you forget it.", formato:"text on screen + voiceover", roteiro:["Show the full prompt on screen for 3s","Explain each part in one line","Show the result in CapCut","Ask viewers to save it"], diferencial:"O prompt já vem testado nos apps que o público leigo usa (CapCut, InShot), não em software profissional."}),
+  "POV": () => ({titulo:"POV: your boss needs a video by 5pm", gancho:"POV: your boss wants the company video by 5pm.", formato:"acted POV + screen recording", roteiro:["Boss sends a Slack message: 'need a video today'","2 seconds of panic","Open Claude and build the edit plan","Deliver it and the boss replies 'this is great'"], diferencial:"Sai do universo de creator e vai pro escritório comum, onde o público leigo se reconhece."}),
+  "Comparação": () => ({titulo:"Me editing alone vs. me editing with Claude", gancho:"Same clip, two edits. Which one wins?", formato:"side by side + comment poll", roteiro:["Show the edit made with no help","Show the edit guided by Claude","Show the time spent on each","Ask for votes in the comments"], diferencial:"Compara você com você mesma, não com um editor caro, então parece alcançável."}),
+  "Série / Dia N": () => ({titulo:"30 days learning to edit with Claude", gancho:"Day 1: I can't even trim a video.", formato:"daily series, same framing", roteiro:["State today's challenge","Show the question you asked Claude","Apply the answer","Show progress vs. yesterday"], diferencial:"Você aprende em público como iniciante de verdade, o que faz as pessoas torcerem e voltarem."}),
+  "Tela gravada": () => ({titulo:"Auto captions that don't butcher your words", gancho:"Your auto captions are wrong. Fix them like this.", formato:"zoomed screen recording", roteiro:["Show the app's broken captions","Paste them into Claude to fix and split into short lines","Paste back into CapCut","Show before and after"], diferencial:"Foca no erro que todo mundo tem (legenda automática errada) em vez de um truque avançado."}),
+  "Lista rápida": () => ({titulo:"3 things Claude does for people who can't edit", gancho:"3 things Claude does that nobody tells you about.", formato:"talking head + text on screen", roteiro:["Tip 1: a cut list","Tip 2: cleaned-up captions","Tip 3: a better hook","CTA: follow for part 2"], diferencial:"Cada dica mostra o resultado em 3 segundos, sem jargão de editor."}),
+  "Pessoa leiga": () => ({titulo:"My neighbor edited her first Reel with Claude", gancho:"My 70-year-old neighbor edited this Reel by herself.", formato:"vlog + reaction", roteiro:["She tries alone and gets stuck","You show her Claude on her phone","She follows the steps out loud","Her reaction to the final result"], diferencial:"Personagem novo (vizinha, não mãe/avô) com humor real; o formato é o mesmo, o rosto é outro."}),
+  "CTA de comentário": () => ({titulo:"Comment EDIT and I'll send it", gancho:"Comment EDIT and I'll DM you this exact prompt.", formato:"fast result + CTA", roteiro:["Show the final result first","Show the prompt blurred","Ask for the keyword in comments","Reply in DMs with the prompt"], diferencial:"Palavra-chave diferente das já saturadas (CUT, HOOK) e entrega por DM pra puxar conversa e follow."}),
+  "Dados/Retenção": () => ({titulo:"The exact second people stop watching", gancho:"Half your viewers leave right here. Claude found it.", formato:"analytics screenshot + screen recording", roteiro:["Show the retention graph","Send the screenshot and transcript to Claude","Show the suggested cut","Compare retention after"], diferencial:"Traduz métrica técnica pra linguagem de quem só posta no Instagram."}),
+  "Tempo recorde": () => ({titulo:"I edited this on my commute", gancho:"I edited this entire video on the train.", formato:"moving selfie + screen", roteiro:["Show you're on the train","Ask Claude for the edit plan","Do it on your phone","Post before your stop"], diferencial:"Edição 100% no celular numa rotina real, sem computador, que é a realidade de quem não edita."})
 };
 function localRemix(){
   const names = (lastPatterns?.padroes||[]).map(p=>p.nome);
@@ -608,9 +609,10 @@ Você é o AGENTE EXPERT EM LEGENDAS VIRAIS E HASHTAGS para Instagram e TikTok. 
 Ideia do vídeo: ${JSON.stringify({titulo:idea.titulo,gancho:idea.gancho,formato:idea.formato,roteiro:idea.roteiro})}
 
 Escreva:
-- 2 legendas em português (uma curta e provocativa, uma que entrega valor e pede save), com quebra de linha e CTA que gera comentário ou follow. Máximo 2 emojis por legenda.
-- 3 textos curtos para a tela nos primeiros 2 segundos.
-- Hashtags em 3 grupos: alcance (3, amplas), nicho (5, edição/IA/Claude, misture PT e EN), comunidade (3, pequenas, que trazem seguidores fiéis). Sem #fyp genérico demais.
+- 2 legendas EM INGLÊS americano (uma curta e provocativa, uma que entrega valor e pede save), com quebra de linha e CTA que gera comentário ou follow. Máximo 2 emojis por legenda.
+- 3 textos curtos EM INGLÊS para a tela nos primeiros 2 segundos.
+- Hashtags EM INGLÊS em 3 grupos: alcance (3, amplas), nicho (5, edição/IA/Claude), comunidade (3, pequenas, que trazem seguidores fiéis). Sem #fyp genérico demais.
+- A dica de postagem em português, considerando horário dos EUA.
 Responda SOMENTE com JSON válido:
 {"legendas":[{"estilo":"curta","texto":"..."},{"estilo":"valor","texto":"..."}],"texto_tela":["..."],"hashtags":{"alcance":["#..."],"nicho":["#..."],"comunidade":["#..."]},"dica":"1 dica de quando/como postar"}`;
   const out = await askAgent(ui, prompt, () => localCap(idea));
@@ -623,12 +625,12 @@ function localCap(idea){
   const g = idea.gancho || idea.titulo;
   return {
     legendas:[
-      {estilo:"curta", texto:`${g}\n\nVocê não precisa saber editar. Precisa saber pedir. ✂️\n\nComenta EDITA que eu te mando o passo a passo.`},
-      {estilo:"valor", texto:`Salva pra testar hoje:\n\n${(idea.roteiro||[]).map((s,i)=>`${i+1}. ${s}`).join("\n")}\n\nSe ajudou, me segue: toda semana tem uma dica nova de edição com Claude. 💡`}
+      {estilo:"curta", texto:`${g}\n\nYou don't need to know how to edit. You need to know what to ask. ✂️\n\nComment EDIT and I'll send you the steps.`},
+      {estilo:"valor", texto:`Save this and try it today:\n\n${(idea.roteiro||[]).map((s,i)=>`${i+1}. ${s}`).join("\n")}\n\nFollow for a new Claude editing tip every week. 💡`}
     ],
-    texto_tela:[g, "Sem saber editar nada", "Só com o Claude"],
-    hashtags:{alcance:["#reels","#dicasdeedicao","#inteligenciaartificial"], nicho:["#claudeai","#edicaodevideo","#capcut","#aiediting","#videoediting"], comunidade:["#criadoresbr","#editecomia","#reelsparainiciantes"]},
-    dica:"Poste entre 18h e 21h e responda os primeiros comentários em até 30 minutos."
+    texto_tela:[g, "Zero editing skills", "Just Claude"],
+    hashtags:{alcance:["#reels","#contentcreator","#aitools"], nicho:["#claudeai","#videoediting","#capcut","#aiediting","#editingtips"], comunidade:["#beginnercreator","#smallcreator","#editwithai"]},
+    dica:"Poste entre 18h e 21h no horário de Nova York (ET) e responda os primeiros comentários em até 30 minutos."
   };
 }
 
@@ -659,7 +661,7 @@ function renderIdeas(){
       <h4>${esc(i.titulo)}</h4>
       <div class="gancho">“${esc(i.gancho)}”</div>
       <ol>${(i.roteiro||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
-      <div class="dif"><b>Diferente do gringo:</b> ${esc(i.diferencial)}</div>
+      <div class="dif"><b>O que muda:</b> ${esc(i.diferencial)}</div>
       ${capHTML(i.cap)}
       <div class="idea-actions">
         ${i.cap?"":`<button class="btn sm" data-act="cap">Legenda + hashtags</button>`}
